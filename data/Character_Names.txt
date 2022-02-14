@@ -1,0 +1,5 @@
+Estelle Bright  D:\StarterBot\data\Character_Portraits\estelle bright.png
+Joshua Bright  D:\StarterBot\data\Character_Portraits\joshua bright.jpg
+Kloe Rinz  D:\StarterBot\data\Character_Portraits\kloe rinz.png
+Tita Russell  D:\StarterBot\data\Character_Portraits\tita russell.png
+Agate Crosner  D:\StarterBot\data\Character_Portraits\agate crosner.jpg

@@ -1,0 +1,9 @@
+Storage/
+games/
+node_modules/
+package-lock.json
+package.json
+token.json
+gamemap.txt
+servermap.txt
+code/secrets.js
