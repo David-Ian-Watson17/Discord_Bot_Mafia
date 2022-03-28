@@ -12,6 +12,9 @@ Default:    Sends full message with images and no modification.
 Anonymous:  Sends full message with images and no modification. 
             Author username and profile picture are replaced to 
             preserve anonymity of the author.
+Signal:     Sends no message. Instead requires a user be pinged
+            and sends a pre-decided message based on who was signaled.
+            Default message is a ping.
 */
 
 const client = require('../client.js').client();
@@ -44,6 +47,33 @@ var getnumberofconnections = function(gameid)
 {
     var connections = getconnections(gameid);
     return connections.length;
+}
+
+var getsignal = function(gameid, signalindex)
+{
+    return fs.readFileSync(`${dir}/${gameid}/signals/${signalindex}.txt`);
+}
+
+var getsignals = function(gameid)
+{
+    var returnarray = [];
+    var countindex = 0;
+    while(fs.existsSync(`${dir}/${gameid}/signals/${countindex}.txt`))
+    {
+        returnarray.push([countindex, fs.readFileSync(`${dir}/${gameid}/signals/${countindex}.txt`)])
+        countindex++;
+    }
+    return returnarray;
+}
+
+//retrieves a member as first priority, then a role
+var getfirstmention = function(message)
+{
+    if(message.mentions.members.first() == undefined)
+    {
+        return message.mentions.roles.first();
+    }
+    return message.mentions.members.first();
 }
 
 var getinitializedconnection = function(gameid, userid)
@@ -99,12 +129,24 @@ var getsendinformationforchannel = function(gameid, channelid)
         var current = connections[i].split("  ");
         if(current[0] == channelid)
         {
-            try{
-                returnvalue.push([current[1], current[2]]);
-            }
-            catch(error)
+            if(current.length > 3)
             {
-                returnvalue.push([current[1], "0"]);
+                try{
+                    returnvalue.push([current[1], current[2], current[3]]);
+                }
+                catch(error)
+                {
+                    console.error(error);
+                }
+            }
+            else{
+                try{
+                    returnvalue.push([current[1], current[2]]);
+                }
+                catch(error)
+                {
+                    returnvalue.push([current[1], "0"]);
+                }
             }
         }
     }
@@ -116,13 +158,23 @@ SETTERS
 */
 
 //true/false
-var startconnection = function(gameid, userid, channelid, anonymous=0)
+//type: 0 = standard, 1 = anonymous, 2 = signal
+var startconnection = function(gameid, userid, channelid, type=0)
 {
     if(getinitializedconnection(gameid, userid) != -1)
         return false;
 
     var rawconnectiondata = fs.readFileSync(`${dir}/${gameid}/connections.txt`).toString();
-    fs.writeFileSync(`${dir}/${gameid}/connections.txt`, `${rawconnectiondata}${channelid}  ${userid}  ${anonymous}\n`);
+
+    //type = signal
+    if(type == 2)
+    {
+        var signalindex = addsignal(gameid);
+        fs.writeFileSync(`${dir}/${gameid}/connections.txt`, `${rawconnectiondata}${channelid}  ${userid}  ${type}  ${signalindex}\n`);
+    }
+    else{
+        fs.writeFileSync(`${dir}/${gameid}/connections.txt`, `${rawconnectiondata}${channelid}  ${userid}  ${type}\n`);
+    }
     return true;
 }
 
@@ -204,6 +256,34 @@ var removedestinationbyindex = function(gameid, channelid, index)
     fs.writeFileSync(`${dir}/${gameid}/connections.txt`, rawconnectiondata);
 }
 
+var addsignal = function(gameid)
+{
+    if(!fs.existsSync(`${dir}/${gameid}/signals`))
+    {
+        fs.mkdirSync(`${dir}/${gameid}/signals`);
+    }
+
+    var currentindex = 0;
+    while(fs.existsSync(`${dir}/${gameid}/signals/${currentindex}.txt`))
+    {
+        currentindex++;
+    }
+
+    fs.writeFileSync(`${dir}/${gameid}/signals/${currentindex}.txt`, "###");
+
+    return currentindex;
+}
+
+var setsignal = function(gameid, index, signal)
+{
+    if(!fs.existsSync(`${dir}/${gameid}/signals`))
+    {
+        fs.mkdirSync(`${dir}/${gameid}/signals`);
+    }
+
+    fs.writeFileSync(`${dir}/${gameid}/signals/${index}.txt`, signal);
+}
+
 /*
 SENDERS
 */
@@ -246,6 +326,9 @@ var sendmessagechooseparams = function(connections, message)
             case '1':
                 sendmessageonchannelsanonymous([connections[i][0]], message);
                 break;
+            case '2':
+                sendmessageonchannelssignal([connections[i][0]], message, connections[i][2]);
+                break;
             default:
                 sendmessageonchannelsdefaultparams([connections[i][0]], message);
         }
@@ -262,10 +345,23 @@ var sendmessageonchannelsdefaultparams = function(channels, message)
     sendmessageonchannels(channels, message.content, message.attachments.toJSON(), message.embeds, message.member.user.avatarURL(), name);
 }
 
-sendmessageonchannelsanonymous = function(channels, message)
+var sendmessageonchannelsanonymous = function(channels, message)
 {
     var name = "???";
     sendmessageonchannels(channels, message.content, message.attachments.toJSON(), message.embeds, "https://i.imgur.com/B1PH30q.jpeg", name);
+}
+
+var sendmessageonchannelssignal = function(channels, message, signalindex)
+{
+    //retrieve signal
+    var gameid = admin.gameIdFromServerId(message.guild.id);
+    var signal = getsignal(gameid, signalindex);
+    var mention = getfirstmention(message);
+    if(mention == undefined && signal.toString().match(/###/g).length > 0)
+        return;
+    if(mention != undefined)
+        signal = signal.toString().replace(/###/g, `<@${mention.id}>`);
+    sendmessageonchannels(channels, signal);
 }
 
 var sendmessageonchannels = function(channels, message, attached=null, mbeds=null, sentavatar=null, sentname=null)
@@ -286,23 +382,40 @@ var sendmessageonchannels = function(channels, message, attached=null, mbeds=nul
             channel.fetchWebhooks().then(webhooks => {
 
                 //found webhook, send on it
-                var webhook = webhooks.first();
-                webhook.send({ content: message, username: name, avatarURL: avatar, files: attached, embeds: mbeds });
+                var found = false;
+                webhooks.each(hook => {
+                    if(found == true)
+                        return;
+                    if(hook.owner.id == client.user.id)
+                    {
+                        found = true;
+                        hook.send({ content: message, username: name, avatarURL: avatar, files: attached, embeds: mbeds });
+                    }
+                })
+                
+                //did not find a suitable webhook
+                if(found == false)
+                {
+                    channel.createWebhook(client.user.username).catch(console.error);
+
+                    channel.fetchWebhooks().then(webhooks2 => {
+                        var found2 = false;
+                        webhooks2.each(hook2 => {
+                            if(found2 == true)
+                                return;
+                            if(hook2.owner.id == client.user.id)
+                            {
+                                found2 = true;
+                                hook2.send({ content: message, username: name, avatarURL: avatar, files: attached, embeds: mbeds });
+                            }
+                        })
+                    })
+                }
             }).catch(error => {
-    
-                //no webhook found, create new one
-                channel.createWebhook(channel.name).catch(console.error);
-    
-                //fetch new webhook and send on it
-                channel.fetchWebhooks().then(webhooks => {
-                    var webhook = webhooks.first();
-                    webhook.send({ content: message, username: name, avatarURL: avatar, files: attached, embeds: mbeds });
-                }).catch(error => {
-                    console.error(error);
-    
-                    //if all else fails, send message plainly
-                    channel.send(`${name}: ${message}`);
-                });
+                console.error(error);
+
+                //if all else fails, send message plainly
+                channel.send(`${name}: ${message}`);
             });
         }
         catch(error)
@@ -350,12 +463,14 @@ var cleanseConnections = function(gameid)
 
 module.exports = {
     getconnections: getconnections,
+    getsignals: getsignals,
     getinitializedconnection: getinitializedconnection,
     getsourcesforchannel: getsourcesforchannel,
     getdestinationsforchannel: getdestinationsforchannel,
     getnumberofconnections: getnumberofconnections,
     startconnection: startconnection,
     fulfillconnection: fulfillconnection,
+    setsignal: setsignal,
     addconnection: addconnection,
     removeconnectionbyid: removeconnectionbyid,
     removeconnectionbyindex: removeconnectionbyindex,

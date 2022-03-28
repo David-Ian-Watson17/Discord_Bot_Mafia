@@ -50,7 +50,7 @@ var execute = function(message)
                     }
                     break;
                 case "serverowner":
-                    if(message.channel.guild.owner.id != message.author.id)
+                    if(message.channel.guild.ownerId != message.author.id)
                     {
                         return errorcodes.ERROR_PERMS_SERVEROWNER;
                     }

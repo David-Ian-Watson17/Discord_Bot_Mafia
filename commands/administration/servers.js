@@ -22,7 +22,7 @@ module.exports = {
         {
             try{
                 var server = client.guilds.cache.get(serverids[i]);
-                reply += `${server.name} / ${server.owner.user.username}#${server.owner.user.discriminator}\n`;
+                reply += `${server.name}\n`;
             }
             catch(error)
             {
