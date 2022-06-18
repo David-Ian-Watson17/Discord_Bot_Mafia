@@ -16,6 +16,6 @@ module.exports = {
     {
         //get guild object
         const server = message.channel.guild;
-        serversetup.defaultserversetup(server);
+        return serversetup.defaultserversetup(server);
     }
 }

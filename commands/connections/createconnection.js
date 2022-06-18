@@ -45,11 +45,19 @@ module.exports = {
 //create the start of a connection. this is also where anonymity of the connection is decided
 var createconnectionstart = function(gameid, channelid, userid, anonymous, signal)
 {
-    if(connections.getinitializedconnection(gameid, userid) != -1)
-        return errorcodes.ERROR_CONNECTION_INCOMPLETE_CONNECTION;
-
     var type = (signal * 2) + (anonymous * 1);
-    connections.startconnection(gameid, userid, channelid, type);
+    switch(type){
+        case 0:
+            connections.startStandardConnection(gameid, channelid, userid);
+            break;
+        case 1:
+            connections.startAnonymousConnection(gameid, channelid, userid);
+            break;
+        case 2:
+            connections.startSignalConnection(gameid, channelid, userid);
+            break;
+        default:
+    }
 
     return true;
 }
@@ -57,10 +65,7 @@ var createconnectionstart = function(gameid, channelid, userid, anonymous, signa
 //end a started connection. anonymity doesn't matter because it was already decided at the start of the connection
 var createconnectionend = function(gameid, channelid, userid)
 {
-    if(connections.getinitializedconnection(gameid, userid) == -1)
-        return errorcodes.ERROR_CONNECTION_NO_START_TO_FINISH;
-
-    connections.fulfillconnection(gameid, userid, channelid);
+    connections.endConnection(gameid, channelid, userid);
 
     return true;
 }

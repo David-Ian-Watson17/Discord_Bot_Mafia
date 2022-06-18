@@ -31,8 +31,12 @@ var createGame = function(chosengamename, ownerid)
     fs.writeFileSync(`${dir}/${id}/owner.txt`, `${ownerid}`);
     fs.writeFileSync(`${dir}/${id}/hosts.txt`, `${ownerid}\n`);
     fs.writeFileSync(`${dir}/${id}/servers.txt`, "");
-    fs.writeFileSync(`${dir}/${id}/connections.txt`, "");
     fs.writeFileSync(`${dir}/${id}/hostupdatechannels.txt`, "");
+
+    //write connections directory
+    fs.mkdirSync(`${dir}/${id}/Connections`);
+    fs.writeFileSync(`${dir}/${id}/Connections/Connectionlist.json`, "{}");
+    fs.writeFileSync(`${dir}/${id}/Connections/Incompletelist.json`, "{}");
 
     //write channel message limit 
     fs.mkdirSync(`${dir}/${id}/channelmessagelimits`);

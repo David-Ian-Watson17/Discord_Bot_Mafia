@@ -6,11 +6,17 @@ const clientfile = require('./client.js');
 clientfile.initializeClient();
 const client = clientfile.client();
 
+//get token
+const token = require('./token.json').token;
+
 //get prefix
 const prefix = require('./universal_data/prefix.json').prefix;
 
 //fs for reading from/writing to files
 const fs = require('fs');
+
+//get command handler
+const cmdhandler = require('./commandhandler.js');
 
 //get necessary code files
 const connections = require('./code/connections.js');
@@ -72,7 +78,14 @@ for(var directory of commandCategories)
 //signal readiness
 client.once('ready', async () => {
     console.log('BotBoi is online!');
-    console.log(commandFiles);
+    //console.log(commandFiles);
+
+    //set up slash commands
+    cmdhandler.readySlashCommands();
+
+    //start listeners
+    connections.startConnectionListener();
+
 });
 
 /*
@@ -113,14 +126,6 @@ client.on('messageCreate', message =>{
         }
     }
 
-    //check for connections and send message
-    if(skipconnections == false)
-    {
-        try{ connections.checkConnections(message); }
-        catch(error)
-        { console.log(error); }
-    }
-
     //check secrets
     try{ secrets.checkSecrets(message); }
     catch(error)
@@ -133,4 +138,4 @@ client.on('error', error => {
 
 // Have the client log in to the bot
 
-client.login(require('./token.json').token);
+client.login(token);

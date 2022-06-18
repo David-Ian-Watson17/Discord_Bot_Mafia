@@ -3,10 +3,10 @@ const Discord = require('discord.js');
 const fs = require('fs');
 const dir = './games'
 const admin = require('./administration.js');
-const prefix = require('../universal_data/prefix.json');
+const prefix = require('../universal_data/prefix.json').prefix;
 
-const defaultdescription = "Welcome to a mafia game!\n" +
-"\nJoin our hub server if you haven't!\nhttps://discord.gg/vzQT5mqCN5"
+const defaultdescription = "Welcome! " +
+"Join our hub server if you haven't!\nhttps://discord.gg/vzQT5mqCN5"
 const defaultrules = "The game can only run if we all follow the rules of the game, therefore be sure to abide them so that we can all have fun time together. The repercussions of the rules might be altered at the digression of the host depending on the situation. More rules may be created should the need arise.\n" +
                     "\`\`\` \`\`\`\n" +
                     "**Major Rules:**\nBreaking any of these will result in a modkill\n" +
@@ -98,52 +98,34 @@ var defaultserversetup = function(server)
 
     //create host role
     server.roles.create({
-        data: {
             name: "Host",
             color: "YELLOW",
             mentionable: true,
             permissions: ["ADMINISTRATOR"]
-        }
-    }).catch(error => {console.log(error)});
-
-    //create co-host role
-    server.roles.create({
-        data: {
-            name: "Co-Host",
-            color: "GREEN",
-            mentionable: true,
-            permissions: ["ADMINISTRATOR"]
-        }
     }).catch(error => {console.log(error)});
 
     //create player role
     server.roles.create({
-        data: {
-            name: "Player",
-            color: "RED",
-            mentionable: true,
-            permissions: ["VIEW_CHANNEL", "SEND_MESSAGES", "EMBED_LINKS", "ATTACH_FILES", "READ_MESSAGE_HISTORY", "MENTION_EVERYONE", "USE_EXTERNAL_EMOJIS", "CONNECT", "SPEAK", "CHANGE_NICKNAME"]
-        }
+        name: "Player",
+        color: "RED",
+        mentionable: true,
+        permissions: ["VIEW_CHANNEL", "SEND_MESSAGES", "EMBED_LINKS", "ATTACH_FILES", "READ_MESSAGE_HISTORY", "MENTION_EVERYONE", "USE_EXTERNAL_EMOJIS", "CONNECT", "SPEAK", "CHANGE_NICKNAME"]
     }).catch(error => {console.log(error)});
 
     //create observer role
     server.roles.create({
-        data: {
-            name: "Observer",
-            color: "BLUE",
-            mentionable: true,
-            permissions: ["VIEW_CHANNEL", "SEND_MESSAGES", "EMBED_LINKS", "ATTACH_FILES", "READ_MESSAGE_HISTORY", "MENTION_EVERYONE", "USE_EXTERNAL_EMOJIS", "CONNECT", "SPEAK", "CHANGE_NICKNAME"]
-        }
+        name: "Observer",
+        color: "BLUE",
+        mentionable: true,
+        permissions: ["VIEW_CHANNEL", "SEND_MESSAGES", "EMBED_LINKS", "ATTACH_FILES", "READ_MESSAGE_HISTORY", "MENTION_EVERYONE", "USE_EXTERNAL_EMOJIS", "CONNECT", "SPEAK", "CHANGE_NICKNAME"]
     }).catch(error => {console.log(error)});
 
     //create dead role
     server.roles.create({
-        data: {
-            name: "Dead",
-            color: "PURPLE",
-            mentionable: true,
-            permissions: ["VIEW_CHANNEL", "SEND_MESSAGES", "EMBED_LINKS", "ATTACH_FILES", "READ_MESSAGE_HISTORY", "MENTION_EVERYONE", "USE_EXTERNAL_EMOJIS", "CONNECT", "SPEAK", "CHANGE_NICKNAME"]
-        }
+        name: "Dead",
+        color: "PURPLE",
+        mentionable: true,
+        permissions: ["VIEW_CHANNEL", "SEND_MESSAGES", "EMBED_LINKS", "ATTACH_FILES", "READ_MESSAGE_HISTORY", "MENTION_EVERYONE", "USE_EXTERNAL_EMOJIS", "CONNECT", "SPEAK", "CHANGE_NICKNAME"]
     }).catch(error => {console.log(error)});
 
     //create pregame category
@@ -163,7 +145,7 @@ var defaultserversetup = function(server)
     var informationid
     server.channels.create("INFORMATION", {type: "GUILD_CATEGORY"}).then(channel => {
         informationid = channel.id;
-        channel.updateOverwrite(channel.guild.roles.everyone, { SEND_MESSAGES: false }).catch(console.log);
+        channel.permissionOverwrites.edit(channel.guild.roles.everyone, { SEND_MESSAGES: false }).catch(console.log);
         server.channels.create("announcements", {type: "GUILD_TEXT"}).then(chann => {
             chann.setParent(informationid);
         }).catch(error => {});
@@ -184,7 +166,7 @@ var defaultserversetup = function(server)
     var gameid;
     server.channels.create("GAME", {type: "GUILD_CATEGORY"}).then(channel => {
         gameid = channel.id;
-        channel.updateOverwrite(channel.guild.roles.everyone, { SEND_MESSAGES: false }).catch(console.log);
+        channel.permissionOverwrites.edit(channel.guild.roles.everyone, { SEND_MESSAGES: false }).catch(console.log);
         server.channels.create("day", {type: "GUILD_TEXT"}).then(chann => {
             chann.setParent(gameid);
         }).catch(error => {});
@@ -218,24 +200,22 @@ var defaultserversetup = function(server)
     //create dead section
     var deadid; //to get the category for easy parenting
     server.channels.create("REALM OF THE DEAD", {type: "GUILD_CATEGORY"}).then(channel => {
-        channel.updateOverwrite(channel.guild.roles.everyone, { VIEW_CHANNEL: false });
-        channel.guild.roles.fetch().then(deadroles => {
-            deadroles.cache.forEach(role => {
-                if(role.name == "Dead" || role.name == "Observer")
-                {
-                    channel.updateOverwrite(role, {VIEW_CHANNEL: true});
-                }
-            });
-        }).catch(error => {console.log(error)});
+        channel.permissionOverwrites.edit(channel.guild.roles.everyone, { VIEW_CHANNEL: false }).catch(console.error);
+        channel.guild.roles.cache.forEach(role => {
+            if(role.name == "Dead" || role.name == "Observer")
+            {
+                channel.permissionOverwrites.edit(role, { VIEW_CHANNEL: true }).catch(console.error);
+            }
+        });
         deadid = channel.id;
         server.channels.create("dead-chat", {type: "GUILD_TEXT"}).then(channel => {
             channel.setParent(deadid);
         }).catch(error => {});
-    }).catch(error => {});
+    }).catch(error => { console.error(error) });
 
     var hostid;
     server.channels.create("HOST CHANNELS", {type: "GUILD_CATEGORY"}).then(channel => {
-        channel.updateOverwrite(channel.guild.roles.everyone, { VIEW_CHANNEL: false }).catch(console.log);
+        channel.permissionOverwrites.edit(channel.guild.roles.everyone, { VIEW_CHANNEL: false }).catch(console.error);
         hostid = channel.id;
         server.channels.create("host-updates", {type: "GUILD_TEXT"}).then(chann => {
             chann.setParent(hostid).catch(console.log);
@@ -256,15 +236,15 @@ var defaultserversetup = function(server)
 
 //await asynchronous functions
 const setparent = async(chan, parent) => {
-    await chan.setParent(parent);
+    await chan.setParent(parent).catch(console.error);
 }
 const deletesync = async(chan) => {
     if(chan instanceof Discord.GuildChannel)
         setparent(chan, null);
-    await chan.delete();
+    await chan.delete().catch(console.error);
 }
 const removerolessync = async(member, roleset) => {
-    await member.roles.remove(roleset);
+    await member.roles.remove(roleset).catch(console.error);
 }
 
 module.exports = {

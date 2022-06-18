@@ -2,6 +2,7 @@ const fs = require('fs');
 const Discord = require('discord.js');
 const admin = require('../../code/administration.js');
 const client = require('../../client.js').client();
+const err = require('../../universal_data/errorcodes.json');
 
 module.exports = {
     name: ['addserver'],
@@ -16,7 +17,7 @@ module.exports = {
         var guildid = message.channel.guild.id;
 
         //verify server is not already a member of another game
-        if(admin.gameIdFromServerId(guildid) != -1) return errorcodes.ERROR_SERVER_ALREADY_IN_GAME;
+        if(admin.gameIdFromServerId(guildid) != -1) return err.ERROR_SERVER_ALREADY_IN_GAME;
 
         //add server
         admin.addServer(gameid, guildid);
